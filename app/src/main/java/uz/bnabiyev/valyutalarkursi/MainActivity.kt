@@ -40,7 +40,6 @@ class MainActivity : AppCompatActivity() {
         } else {
             loadDataFromApi()
             binding.tvDate.text = SimpleDateFormat("dd:MM:yyyy").format(Date())
-
         }
 
     }
