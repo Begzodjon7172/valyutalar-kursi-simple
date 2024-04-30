@@ -17,31 +17,65 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import org.json.JSONArray
 import uz.bnabiyev.valyutalarkursi.adapters.RvAdapter
+import uz.bnabiyev.valyutalarkursi.database.MyDatabase
 import uz.bnabiyev.valyutalarkursi.databinding.ActivityMainBinding
 import uz.bnabiyev.valyutalarkursi.models.Valyuta
 import java.text.SimpleDateFormat
 import java.util.Date
 
 private const val TAG = "MainActivity"
+
 class MainActivity : AppCompatActivity() {
     private val binding by lazy { ActivityMainBinding.inflate(layoutInflater) }
     private lateinit var requestQueue: RequestQueue
     private val url = "http://cbu.uz/uzc/arkhiv-kursov-valyut/json/"
     private lateinit var rvAdapter: RvAdapter
+    private lateinit var myDatabase: MyDatabase
 
     @SuppressLint("SetTextI18n")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(binding.root)
         requestQueue = Volley.newRequestQueue(this)
+        myDatabase = MyDatabase(this)
 
         if (!isNetworkConnected()) {
-            Toast.makeText(this, "Internetni ulang va qaytadan kiring", Toast.LENGTH_SHORT).show()
+            try {
+                getOldDataFromDatabase()
+            } catch (e: Exception) {
+                Log.d(TAG, "onCreate: ${e.message}")
+            }
+            Toast.makeText(this, "Please, check your internet connection!!!", Toast.LENGTH_SHORT)
+                .show()
         } else {
+            myDatabase.removeAllValyuta()
             loadDataFromApi()
             binding.tvDate.text = SimpleDateFormat("dd:MM:yyyy").format(Date())
         }
 
+    }
+
+    private fun getOldDataFromDatabase() {
+        binding.tvDate.text = myDatabase.getValyutaById(myDatabase.listValyuta().first().id).Date
+        rvAdapter = RvAdapter(myDatabase.listValyuta())
+        binding.rv.adapter = rvAdapter
+        myDatabase.listValyuta().forEach {
+            binding.apply {
+                if (it.Ccy == "USD") {
+                    tvUsd.text = "1 USD"
+                    tvNumberUsd.text = it.Rate.toString()
+                    tvInfoNumberUsd.text = "Farq : ${it.Diff}"
+                } else if (it.Ccy == "RUB") {
+                    tvRub.text = "1 RUB"
+                    tvNumberRub.text = it.Rate.toString()
+                    tvInfoNumberRub.text = "Farq : ${it.Diff}"
+                } else if (it.Ccy == "EUR") {
+                    tvEur.text = "1 EUR"
+                    tvNumberEur.text = it.Rate.toString()
+                    tvInfoNumberEur.text = "Farq : ${it.Diff}"
+                }
+            }
+        }
     }
 
     private fun loadDataFromApi() {
@@ -58,7 +92,7 @@ class MainActivity : AppCompatActivity() {
                             response.toString(),
                             type
                         ) as ArrayList<Valyuta>
-                        
+
                         rvAdapter = RvAdapter(list)
                         binding.rv.adapter = rvAdapter
 
@@ -80,6 +114,7 @@ class MainActivity : AppCompatActivity() {
                                 }
 
                             }
+                            myDatabase.addValyuta(it)
                         }
                     }
                 }
